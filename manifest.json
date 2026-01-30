@@ -1,0 +1,15 @@
+
+{
+  "manifest_version": 3,
+  "name": "LRC 视频剧本同步器",
+  "version": "1.0.0",
+  "description": "为视频快速切割分段并分配剧本，导出标准 LRC 文件。",
+  "permissions": ["storage"],
+  "action": {
+    "default_title": "打开同步器",
+    "default_popup": "index.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://esm.sh; object-src 'self'"
+  }
+}

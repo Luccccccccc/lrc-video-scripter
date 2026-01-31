@@ -1,10 +1,10 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
   Play, Pause, Plus, Trash2, Download, Upload, Scissors, 
   Edit3, Save, X, RotateCcw, Type, GripVertical, HelpCircle, Info
 } from 'lucide-react';
+import './index.css';
 
 // --- 类型定义 ---
 
@@ -242,7 +242,7 @@ const App: React.FC = () => {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowHelp(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-slate-400 hover:text-white transition-colors bg-transparent"
           >
             <HelpCircle className="w-4 h-4" />
             <span className="text-sm">使用帮助</span>
@@ -251,7 +251,7 @@ const App: React.FC = () => {
             onClick={() => {
               setTextBlocks([{ id: '1', text: '你好，这是一个示例行。' }, { id: '2', text: '在静谧中看日落。' }]);
             }}
-            className="text-xs text-slate-400 hover:text-white px-3 py-1.5 border border-slate-700 rounded-md transition-all"
+            className="text-xs text-slate-400 hover:text-white px-3 py-1.5 border border-slate-700 rounded-md transition-all bg-transparent"
           >
             加载示例文本
           </button>
@@ -263,7 +263,7 @@ const App: React.FC = () => {
           <button 
             onClick={exportLRC}
             disabled={!segments.some(s => s.textId)}
-            className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-all shadow-lg shadow-indigo-500/25 text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-all shadow-lg shadow-indigo-500/25 text-sm font-medium text-white"
           >
             <Download className="w-4 h-4" />
             导出 .LRC
@@ -277,7 +277,7 @@ const App: React.FC = () => {
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto overflow-x-hidden">
             
-            {/* 视频视图：固定大小，不随内容增多而压缩 */}
+            {/* 视频视图 */}
             <div className="relative shrink-0 w-full max-w-5xl mx-auto aspect-video bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-2xl group">
               {videoUrl ? (
                 <video 
@@ -313,7 +313,7 @@ const App: React.FC = () => {
                     </div>
                     <button 
                       onClick={splitSegment}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-sm shadow-xl transition-all"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-sm shadow-xl transition-all text-white"
                     >
                       <Scissors className="w-4 h-4" />
                       在此处切割 (M)
@@ -363,10 +363,10 @@ const App: React.FC = () => {
                       {/* 合并手柄 */}
                       {idx < segments.length - 1 && (
                         <button 
-                          className="absolute top-0 right-0 bottom-0 w-2 hover:bg-red-500/50 z-20 transition-all cursor-col-resize group/merge"
+                          className="absolute top-0 right-0 bottom-0 w-2 hover:bg-red-500/50 z-20 transition-all cursor-col-resize group/merge bg-transparent"
                           onClick={(e) => { e.stopPropagation(); mergeSegments(idx); }}
                         >
-                          <div className="hidden group-hover/merge:flex absolute top-0 -translate-y-full left-1/2 -translate-x-1/2 bg-red-600 text-[8px] px-1 py-0.5 rounded font-bold">合并</div>
+                          <div className="hidden group-hover/merge:flex absolute top-0 -translate-y-full left-1/2 -translate-x-1/2 bg-red-600 text-[8px] px-1 py-0.5 rounded font-bold text-white">合并</div>
                         </button>
                       )}
                     </div>
@@ -383,7 +383,7 @@ const App: React.FC = () => {
               </div>
 
               {/* 活动分段详细列表 */}
-              <div className="mt-6 space-y-3 max-h-[300px] overflow-y-auto pr-2">
+              <div className="mt-6 space-y-3 max-h-[300px] overflow-y-auto pr-2 min-h-0">
                 {segments.map((seg, idx) => {
                   const isActive = currentTime >= seg.startTime && currentTime < seg.endTime;
                   return (
@@ -409,7 +409,7 @@ const App: React.FC = () => {
                       </select>
                       <button 
                         onClick={() => seek(seg.startTime)} 
-                        className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                        className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors bg-transparent"
                         title="跳转至开始点"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
@@ -431,21 +431,21 @@ const App: React.FC = () => {
             </h2>
             <button 
               onClick={() => addTextBlock()}
-              className="p-1.5 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 rounded-lg transition-colors"
+              className="p-1.5 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 rounded-lg transition-colors bg-transparent"
               title="添加文本行"
             >
               <Plus className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
             {/* 批量导入区域 */}
             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 mb-2">
                <form onSubmit={handleBulkImport}>
                  <textarea 
                    name="rawText"
                    placeholder="在此粘贴完整剧本... (每行将自动转为一个分段)"
-                   className="w-full h-32 bg-transparent text-sm text-slate-300 placeholder:text-slate-700 outline-none resize-none"
+                   className="w-full h-32 bg-transparent text-sm text-slate-300 placeholder:text-slate-700 outline-none resize-none border-none"
                  />
                  <button className="w-full mt-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all border border-slate-700">
                    批量处理文本
@@ -453,7 +453,7 @@ const App: React.FC = () => {
                </form>
             </div>
 
-            {/* 文本块列表：支持拖拽排序 */}
+            {/* 文本块列表 */}
             <div className="space-y-3 pb-8">
               {textBlocks.length === 0 && (
                 <div className="text-center py-20 opacity-20 italic text-sm">剧本库为空</div>
@@ -475,7 +475,7 @@ const App: React.FC = () => {
                     <div className="flex flex-col gap-3">
                       <textarea 
                         autoFocus
-                        className="w-full bg-transparent text-sm text-white outline-none resize-none"
+                        className="w-full bg-transparent text-sm text-white outline-none resize-none border-none"
                         defaultValue={block.text}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
@@ -487,8 +487,8 @@ const App: React.FC = () => {
                         onBlur={(e) => updateTextBlock(block.id, e.target.value)}
                       />
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setEditingBlockId(null)} className="p-1.5 hover:bg-slate-800 rounded-lg"><X className="w-3.5 h-3.5 text-slate-500" /></button>
-                        <button className="p-1.5 bg-indigo-600/20 text-indigo-400 rounded-lg"><Save className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setEditingBlockId(null)} className="p-1.5 hover:bg-slate-800 rounded-lg bg-transparent"><X className="w-3.5 h-3.5 text-slate-500" /></button>
+                        <button className="p-1.5 bg-indigo-600/20 text-indigo-400 rounded-lg bg-transparent"><Save className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
                   ) : (
@@ -499,10 +499,10 @@ const App: React.FC = () => {
                         </div>
                         <p className="text-sm text-slate-300 leading-relaxed flex-1">{block.text}</p>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/80 backdrop-blur p-1 rounded-lg shrink-0">
-                          <button onClick={() => setEditingBlockId(block.id)} className="p-1.5 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors">
+                          <button onClick={() => setEditingBlockId(block.id)} className="p-1.5 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors bg-transparent">
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => deleteTextBlock(block.id)} className="p-1.5 hover:bg-red-900/20 rounded-md text-red-500 transition-colors">
+                          <button onClick={() => deleteTextBlock(block.id)} className="p-1.5 hover:bg-red-900/20 rounded-md text-red-500 transition-colors bg-transparent">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -532,7 +532,7 @@ const App: React.FC = () => {
                 <Info className="text-indigo-500" />
                 使用指南
               </h2>
-              <button onClick={() => setShowHelp(false)} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
+              <button onClick={() => setShowHelp(false)} className="p-2 hover:bg-slate-800 rounded-full transition-colors bg-transparent text-slate-100">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -544,7 +544,7 @@ const App: React.FC = () => {
               </section>
               <section className="space-y-2">
                 <h3 className="font-bold text-white">2. 切分段落</h3>
-                <p className="text-sm">播放视频（快捷键 <kbd className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 font-mono text-xs text-white">Space</kbd>），当画面进行转场或需要切换歌词时，按下 <kbd className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 font-mono text-xs text-white">M</kbd> 键。视频会自动切分为两个分段。</p>
+                <p className="text-sm">播放视频（快捷键 <kbd>Space</kbd>），当画面进行转场或需要切换歌词时，按下 <kbd>M</kbd> 键。视频会自动切分为两个分段。</p>
               </section>
               <section className="space-y-2">
                 <h3 className="font-bold text-white">3. 分配剧本</h3>
@@ -558,7 +558,7 @@ const App: React.FC = () => {
 
             <button 
               onClick={() => setShowHelp(false)}
-              className="w-full mt-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/25"
+              className="w-full mt-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/25 text-white"
             >
               我知道了
             </button>

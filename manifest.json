@@ -1,15 +1,15 @@
-
 {
   "manifest_version": 3,
-  "name": "LRC 视频剧本同步器",
-  "version": "1.0.0",
-  "description": "为视频快速切割分段并分配剧本，导出标准 LRC 文件。",
-  "permissions": ["storage"],
+  "name": "LRC 视频剧本同步器 (全屏专业版)",
+  "version": "1.0.2",
+  "description": "专业级视频剧本同步工具，支持全屏操作与高效打点。",
+  "permissions": ["storage", "tabs"],
   "action": {
-    "default_title": "打开同步器",
-    "default_popup": "index.html"
+    "default_title": "点击启动全屏同步器"
   },
-  "content_security_policy": {
-    "extension_pages": "script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://esm.sh; object-src 'self'"
-  }
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "minimum_chrome_version": "88"
 }

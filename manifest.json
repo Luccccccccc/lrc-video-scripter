@@ -1,11 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "LRC 视频剧本同步器 (全屏专业版)",
-  "version": "1.0.2",
-  "description": "专业级视频剧本同步工具，支持全屏操作与高效打点。",
+  "name": "LRC 视频字幕同步器",
+  "version": "1.0.3",
+  "description": "专业级视频字幕同步工具。",
   "permissions": ["storage", "tabs"],
   "action": {
-    "default_title": "点击启动全屏同步器"
+    "default_title": "点击启动 LRC 视频字幕同步器",
+    "default_icon": {
+      "16": "subtitles-16.png",
+      "32": "subtitles-32.png",
+      "48": "subtitles-48.png",
+      "128": "subtitles-128.png"
+    }
+
   },
   "background": {
     "service_worker": "background.js",

@@ -24,6 +24,7 @@ interface VideoSegment {
 
 const App: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoFileName, setVideoFileName] = useState<string>('字幕导出');
   const [duration, setDuration] = useState<number>(0);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -32,6 +33,7 @@ const App: React.FC = () => {
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [dragOverSegmentId, setDragOverSegmentId] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -43,6 +45,11 @@ const App: React.FC = () => {
     if (file) {
       const url = URL.createObjectURL(file);
       setVideoUrl(url);
+            
+      // 提取不带后缀的文件名
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+      setVideoFileName(nameWithoutExt);
+      
       setSegments([]); 
       if (videoRef.current) {
         videoRef.current.src = url;
@@ -148,17 +155,21 @@ const App: React.FC = () => {
   };
 
   // 拖拽排序逻辑
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    e.dataTransfer.setData('text/plain', index.toString());
+  const handleTextBlockDragStart = (e: React.DragEvent, blockId: string, index: number) => {
+    e.dataTransfer.setData('textBlockId', blockId);
+    e.dataTransfer.setData('sourceIndex', index.toString());
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleTextBlockDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+  const handleTextBlockDrop = (e: React.DragEvent, targetIndex: number) => {
     e.preventDefault();
-    const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    const sourceIndexStr = e.dataTransfer.getData('sourceIndex');
+    if (!sourceIndexStr) return; // Not a reorder operation
+
+    const sourceIndex = parseInt(sourceIndexStr, 10);
     if (sourceIndex === targetIndex) return;
 
     setTextBlocks(prev => {
@@ -167,6 +178,20 @@ const App: React.FC = () => {
       result.splice(targetIndex, 0, removed);
       return result;
     });
+  };
+
+  const handleSegmentDragOver = (e: React.DragEvent, segmentId: string) => {
+    e.preventDefault();
+    setDragOverSegmentId(segmentId);
+  };
+
+  const handleSegmentDrop = (e: React.DragEvent, segmentId: string) => {
+    e.preventDefault();
+    setDragOverSegmentId(null);
+    const textBlockId = e.dataTransfer.getData('textBlockId');
+    if (textBlockId) {
+      updateSegmentText(segmentId, textBlockId);
+    }
   };
 
   const handleBulkImport = (e: React.FormEvent<HTMLFormElement>) => {
@@ -204,7 +229,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = '字幕导出.lrc';
+    a.download = `${videoFileName}.lrc`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -235,7 +260,7 @@ const App: React.FC = () => {
             <Scissors className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-            LRC 视频剧本同步器
+            LRC 视频字幕同步器
           </h1>
         </div>
         
@@ -386,11 +411,15 @@ const App: React.FC = () => {
               <div className="mt-6 space-y-3 max-h-[300px] overflow-y-auto pr-2 min-h-0">
                 {segments.map((seg, idx) => {
                   const isActive = currentTime >= seg.startTime && currentTime < seg.endTime;
+                  const isDragOver = dragOverSegmentId === seg.id;
                   return (
                     <div 
                       key={seg.id}
+                      onDragOver={(e) => handleSegmentDragOver(e, seg.id)}
+                      onDragLeave={() => setDragOverSegmentId(null)}
+                      onDrop={(e) => handleSegmentDrop(e, seg.id)}
                       className={`flex items-center gap-4 p-3 rounded-xl border transition-all ${
-                        isActive ? 'bg-indigo-600/10 border-indigo-500/50' : 'bg-slate-900 border-slate-800'
+                        isActive ? 'bg-indigo-600/10 border-indigo-500/50' : (isDragOver ? 'bg-indigo-500/20 border-indigo-500 shadow-indigo-500/20' : 'bg-slate-900 border-slate-800')
                       }`}
                     >
                       <div className="text-[10px] font-bold text-slate-500 w-16 uppercase">分段 {idx + 1}</div>
@@ -402,7 +431,7 @@ const App: React.FC = () => {
                         value={seg.textId || ''}
                         onChange={(e) => updateSegmentText(seg.id, e.target.value || null)}
                       >
-                        <option value="">(未分配文本)</option>
+                        <option value="">(未分配文本 / 拖拽此处分配)</option>
                         {textBlocks.map(b => (
                           <option key={b.id} value={b.id}>{b.text.slice(0, 50)}...</option>
                         ))}
@@ -422,12 +451,12 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* 右侧边栏：剧本库 */}
+        {/* 右侧边栏：字幕库 */}
         <aside className="w-96 border-l border-slate-800 bg-slate-900/20 backdrop-blur-sm flex flex-col shrink-0">
           <div className="p-6 border-b border-slate-800 flex items-center justify-between">
             <h2 className="text-sm font-bold flex items-center gap-2">
               <Type className="w-4 h-4 text-indigo-400" />
-              剧本库
+              字幕库
             </h2>
             <button 
               onClick={() => addTextBlock()}
@@ -444,7 +473,7 @@ const App: React.FC = () => {
                <form onSubmit={handleBulkImport}>
                  <textarea 
                    name="rawText"
-                   placeholder="在此粘贴完整剧本... (每行将自动转为一个分段)"
+                   placeholder="在此粘贴完整字幕文案... (每行将自动转为一个分段)"
                    className="w-full h-32 bg-transparent text-sm text-slate-300 placeholder:text-slate-700 outline-none resize-none border-none"
                  />
                  <button className="w-full mt-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all border border-slate-700">
@@ -456,15 +485,15 @@ const App: React.FC = () => {
             {/* 文本块列表 */}
             <div className="space-y-3 pb-8">
               {textBlocks.length === 0 && (
-                <div className="text-center py-20 opacity-20 italic text-sm">剧本库为空</div>
+                <div className="text-center py-20 opacity-20 italic text-sm">字幕库为空</div>
               )}
               {textBlocks.map((block, index) => (
                 <div 
                   key={block.id}
                   draggable={editingBlockId !== block.id}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
+                  onDragStart={(e) => handleTextBlockDragStart(e, block.id, index)}
+                  onDragOver={handleTextBlockDragOver}
+                  onDrop={(e) => handleTextBlockDrop(e, index)}
                   className={`group relative p-4 rounded-2xl border transition-all ${
                     editingBlockId === block.id 
                     ? 'bg-slate-950 border-indigo-500/50 shadow-xl ring-1 ring-indigo-500/20' 
@@ -544,15 +573,15 @@ const App: React.FC = () => {
               </section>
               <section className="space-y-2">
                 <h3 className="font-bold text-white">2. 切分段落</h3>
-                <p className="text-sm">播放视频（快捷键 <kbd>Space</kbd>），当画面进行转场或需要切换歌词时，按下 <kbd>M</kbd> 键。视频会自动切分为两个分段。</p>
+                <p className="text-sm">播放视频（快捷键 <kbd>Space</kbd>），当画面进行转场或需要切换字幕时，按下 <kbd>M</kbd> 键。视频会自动切分为两个分段。</p>
               </section>
               <section className="space-y-2">
                 <h3 className="font-bold text-white">3. 分配剧本</h3>
-                <p className="text-sm">在时间轴下方的段落列表中，通过下拉菜单为每个视频段落选择对应的文本。如果切错了，可以点击段落之间的红色感应区进行 <span className="text-red-400">合并</span>。</p>
+                <p className="text-sm">除了使用下拉菜单，您还可以直接从右侧 <b>字幕库</b> 拖拽文本块到下方的 <b>分段列表</b> 中进行分配。如果切错了，可以点击段落之间的红色感应区进行 <span className="text-red-400">合并</span>。</p>
               </section>
               <section className="space-y-2">
                 <h3 className="font-bold text-white">4. 整理与导出</h3>
-                <p className="text-sm">右侧剧本库支持拖拽调整顺序、随时修改内容。完成后点击右上角的 <span className="text-indigo-400">导出 .LRC</span> 即可下载带有精确时间轴的字幕文件。</p>
+                <p className="text-sm">右侧字幕库支持拖拽调整顺序、随时修改内容。完成后点击右上角的 <span className="text-indigo-400">导出 .LRC</span> 即可下载带有精确时间轴的字幕文件。</p>
               </section>
             </div>
 
@@ -571,7 +600,7 @@ const App: React.FC = () => {
         <div className="flex items-center gap-6 text-[10px] text-slate-600 font-medium uppercase tracking-widest">
           <span>快捷键：[空格] 播放/暂停</span>
           <span>[M] 在当前位置切割</span>
-          <span>[滚轮] 查看分段列表</span>
+          <span>[拖拽] 分配文本块</span>
         </div>
         <div className="text-[10px] text-slate-700">
           状态：等待操作

@@ -38,6 +38,9 @@ const App: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
 
+  const [hoveredSegmentId, setHoveredSegmentId] = useState<string | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<{x: number, y: number} | null>(null);
+
   // --- 视频处理 ---
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,14 +209,12 @@ const App: React.FC = () => {
     e.currentTarget.reset();
   };
 
-  // --- 导出逻辑 ---
+  // --- 导出逻辑，支持无字幕段落 ---
 
   const exportLRC = () => {
     const lrcLines = segments
-      .filter(s => s.textId)
       .map(s => {
-        const block = textBlocks.find(b => b.id === s.textId);
-        if (!block) return null;
+        const block = s.textId ? textBlocks.find(b => b.id === s.textId) : null;
         
         const formatLrcTime = (seconds: number) => {
           const m = Math.floor(seconds / 60);
@@ -221,9 +222,9 @@ const App: React.FC = () => {
           return `[${m.toString().padStart(2, '0')}:${sRem.padStart(5, '0')}]`;
         };
         
-        return `${formatLrcTime(s.startTime)}${block.text}`;
-      })
-      .filter(Boolean);
+        const blockText = block?.text || '';
+        return `${formatLrcTime(s.startTime)}${blockText}`;
+      });
 
     const blob = new Blob([lrcLines.join('\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -376,12 +377,39 @@ const App: React.FC = () => {
                         isActive ? 'bg-indigo-500/15' : 'hover:bg-slate-700/20'
                       }`}
                       style={{ left: `${left}%`, width: `${width}%` }}
+                      onMouseEnter={(e) => {
+                        if (seg.textId) {
+                          setHoveredSegmentId(seg.id);
+                          // 获取鼠标位置
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoverPosition({
+                            x: rect.left,
+                            y: rect.top - 10 // 向上偏移一点
+                          });
+                        }
+                      }}
+                      onMouseMove={(e) => {
+                        if (seg.textId && hoveredSegmentId === seg.id) {
+                          setHoverPosition({
+                            x: e.clientX,
+                            y: e.clientY - 10
+                          });
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredSegmentId(null);
+                        setHoverPosition(null);
+                      }}
                     >
                       {seg.textId && (
                         <div className="absolute inset-0 flex items-center justify-center p-2">
-                           <div className="text-[10px] text-indigo-400 font-medium truncate opacity-60">
-                             {textBlocks.find(b => b.id === seg.textId)?.text}
-                           </div>
+                          <div 
+                            className="text-[10px] text-indigo-400 font-medium truncate opacity-60 hover:opacity-100 transition-opacity"
+                            title={textBlocks.find(b => b.id === seg.textId)?.text}
+                          >
+                            {textBlocks.find(b => b.id === seg.textId)?.text.slice(0, 20)}
+                            {textBlocks.find(b => b.id === seg.textId)?.text.length > 20 ? '...' : ''}
+                          </div>
                         </div>
                       )}
                       

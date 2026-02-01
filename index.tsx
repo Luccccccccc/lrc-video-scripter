@@ -41,6 +41,9 @@ const App: React.FC = () => {
   const [hoveredSegmentId, setHoveredSegmentId] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{x: number, y: number} | null>(null);
 
+  const [importingLrc, setImportingLrc] = useState(false);
+  const [lrcDuration, setLrcDuration] = useState<number>(0);
+
   // --- 视频处理 ---
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,6 +212,114 @@ const App: React.FC = () => {
     e.currentTarget.reset();
   };
 
+  // --- 导入 LRC 文件逻辑 ---
+  const parseLRCFile = (text: string) => {
+    const lines = text.split('\n').filter(line => line.trim());
+    const entries: Array<{time: number, text: string}> = [];
+    let maxTime = 0;
+    
+    lines.forEach(line => {
+      // 增强鲁棒性，匹配 [mm:ss.xx] 或 [mm:ss:xx] 格式
+      const timeMatches = Array.from(line.matchAll(/\[(\d+):(\d+(\.\d+)?)\]/g));
+      
+      if (timeMatches.length > 0) {
+        timeMatches.forEach(match => {
+          const minutes = parseInt(match[1]);
+          const seconds = parseFloat(match[2]);
+          const timeInSeconds = minutes * 60 + seconds;
+          
+          // 移除所有时间戳和标签，只保留纯文本
+          const text = line.replace(/\[\d+:\d+(\.\d+)?\]/g, '').trim();
+          
+          if (text.length > 0 || timeInSeconds > 0) {
+            entries.push({ time: timeInSeconds, text });
+            maxTime = Math.max(maxTime, timeInSeconds);
+          }
+        });
+      }
+    });
+    
+    // 去重和排序
+    const uniqueEntries = Array.from(new Map(
+      entries.map(entry => [`${entry.time}-${entry.text}`, entry])
+    ).values());
+    
+    uniqueEntries.sort((a, b) => a.time - b.time);
+    
+    return {
+      entries: uniqueEntries,
+      maxTime
+    };
+  };
+
+  const handleLrcImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const { entries, maxTime } = parseLRCFile(text);
+      
+      if (entries.length === 0) {
+        alert('未找到有效的字幕条目');
+        return;
+      }
+      
+      // 时长检查
+      if (duration > 0 && duration < maxTime) {
+        alert(`LRC文件时长超出视频长度\nLRC: ${formatTimeDisplay(maxTime)}\n视频: ${formatTimeDisplay(duration)}`);
+        return;
+      }
+      
+      setLrcDuration(maxTime);
+      
+      // 创建文本块和分段
+      const newTextBlocks: TextBlock[] = entries
+        .filter(entry => entry.text.length > 0)
+        .map((entry, index) => ({
+          id: crypto.randomUUID(),
+          text: entry.text
+        }));
+      
+      // 如果有视频，创建分段
+      if (duration > 0) {
+        const newSegments: VideoSegment[] = [];
+        const timePoints = entries.map(e => e.time);
+        
+        // 确保包含视频开始和结束
+        const allTimes = [0, ...timePoints.filter(t => t > 0 && t < duration), duration];
+        
+        for (let i = 0; i < allTimes.length - 1; i++) {
+          const startTime = allTimes[i];
+          const endTime = allTimes[i + 1];
+          
+          // 找到该时间段对应的字幕
+          const entry = entries.find(e => Math.abs(e.time - startTime) < 0.01);
+          
+          newSegments.push({
+            id: crypto.randomUUID(),
+            startTime,
+            endTime,
+            textId: entry?.text 
+              ? newTextBlocks.find(b => b.text === entry.text)?.id || null 
+              : null
+          });
+        }
+        
+        setSegments(newSegments);
+      }
+      
+      setTextBlocks(newTextBlocks);
+      setImportingLrc(false);
+      
+      alert(`导入成功！\n${entries.length} 个时间点\n${newTextBlocks.length} 条字幕`);
+      
+    } catch (error) {
+      console.error('LRC导入错误:', error);
+      alert('文件解析失败');
+    }
+  };
+
   // --- 导出逻辑，支持无字幕段落 ---
 
   const exportLRC = () => {
@@ -273,19 +384,19 @@ const App: React.FC = () => {
             <HelpCircle className="w-4 h-4" />
             <span className="text-sm">使用帮助</span>
           </button>
-          <button 
-            onClick={() => {
-              setTextBlocks([{ id: '1', text: '你好，这是一个示例行。' }, { id: '2', text: '在静谧中看日落。' }]);
-            }}
-            className="text-xs text-slate-400 hover:text-white px-3 py-1.5 border border-slate-700 rounded-md transition-all bg-transparent"
-          >
-            加载示例文本
-          </button>
           <label className="flex items-center gap-2 px-4 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer transition-all border border-slate-700 text-sm font-medium">
             <Upload className="w-4 h-4" />
             导入视频
             <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
           </label>
+          <button 
+            onClick={() => setImportingLrc(true)}
+            disabled={duration === 0}
+            className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-all shadow-lg shadow-indigo-500/25 text-sm font-medium text-white"
+          >
+            <Upload className="w-4 h-4" />
+            导入 .LRC
+          </button>
           <button 
             onClick={exportLRC}
             disabled={!segments.some(s => s.textId)}
@@ -598,6 +709,7 @@ const App: React.FC = () => {
               <section className="space-y-2">
                 <h3 className="font-bold text-white">1. 准备工作</h3>
                 <p className="text-sm">点击右上角的 <span className="text-indigo-400">导入视频</span> 上传视频文件；在右侧 <span className="text-indigo-400">剧本库</span> 粘贴或逐行输入文本。</p>
+                <p className="text-sm">如果您已有 .lrc 字幕文件，可以使用 <span className="text-indigo-400">导入 LRC</span> 功能快速加载。系统会自动根据时间戳创建分段并分配文本，方便再次修改字幕。</p>
               </section>
               <section className="space-y-2">
                 <h3 className="font-bold text-white">2. 切分段落</h3>
@@ -619,6 +731,61 @@ const App: React.FC = () => {
             >
               我知道了
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* LRC 导入模态框 */}
+      {importingLrc && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-2xl w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-3">
+                <Upload className="text-indigo-500" />
+                导入 LRC 文件
+              </h2>
+              <button 
+                onClick={() => setImportingLrc(false)} 
+                className="p-2 hover:bg-slate-800 rounded-full transition-colors bg-transparent text-slate-100"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <h3 className="font-bold text-white mb-2">导入说明</h3>
+                <ul className="text-sm text-slate-300 space-y-2 ml-4 list-disc">
+                  <li>LRC 文件格式应为: <code>[mm:ss.xx]字幕文本</code> 或 <code>[mm:ss:xx]字幕文本</code></li>
+                  <li>视频时长必须 ≥ LRC 文件中最后的时间戳</li>
+                  <li>导入后会清空当前所有分段和字幕</li>
+                  <li>支持空文本段落</li>
+                </ul>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-400">当前视频时长: {formatTimeDisplay(duration)}</span>
+                  {duration > 0 && (
+                    <span className={`text-xs px-3 py-1 rounded-full ${
+                      duration >= (lrcDuration || 0) 
+                        ? 'bg-green-900/30 text-green-400' 
+                        : 'bg-red-900/30 text-red-400'
+                    }`}></span>
+                  )}
+                </div>
+                
+                <label className="flex items-center gap-2 px-4 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer transition-all border border-slate-700 text-sm font-medium">
+                  <Upload className="w-4 h-4" />
+                  选择文件
+                  <input type="file" accept=".lrc,.txt" className="hidden" onChange={handleLrcImport} />
+                </label>
+                
+                <div className="text-xs text-slate-500 text-center">
+                  支持 .lrc 或 .txt 格式文件
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

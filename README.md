@@ -1,5 +1,7 @@
 # LRC Video Subtitle Synchronizer
 
+[中文](README_zh.md) | English
+
 A browser-based video subtitle synchronization tool that allows you to assign subtitles to videos and export them as standard LRC subtitle files.
 
 ## 🎯 Core Features
